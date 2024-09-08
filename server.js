@@ -4,10 +4,13 @@ const helmet = require('helmet');
 const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const http = require('http');
+const socket = require('./socket.js');
 const pino = require('./src/services/logging/pinoService.js');
+// For Microsoft Graph API.
 require('cross-fetch/polyfill');
 
-const webServer = require('./api.js');
+/** Route Config */
+const webServer = require('./api');
 dotenv.config();
 
 const app = express();
@@ -16,46 +19,55 @@ const { port = 3000 } = process.env;
 const env = process.env.NODE_ENV || 'development';
 const isProduction = env === 'production';
 
+socket.initialize(server);
 
 app.use(pino);
 
-const allowedOrigins = process.env.CORS_SERVER_ADDRESS.split(',');
+// Middlewares
+// CORS middleware
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'DELETE, PUT, GET, POST');
+  res.header(
+    'Access-Control-Allow-Headers',
+    'Origin, X-Requested-With, Content-Type, Accept',
+  );
+  next();
+});
 
-// CORS configuration with preflight handling
-app.use(cors({
-  origin: '*',
-  credentials: true, // Allow cookies for authenticated requests (if applicable)
-  methods: 'GET, POST, PUT, DELETE, PATCH', // Allowed HTTP methods
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Allowed request headers
-  preflightContinue: false, // Do not continue to the next middleware for OPTIONS requests
-  optionsSuccessStatus: 204 // Respond with 204 status for successful OPTIONS requests
-}));
-
+/*
+Helmet. js is an open source JavaScript library that helps you secure your Node.
+Js application by setting several HTTP headers. 
+It acts as a middleware for Express and similar technologies, automatically adding
+or removing HTTP headers to comply with web security standards.
+*/
 app.use(helmet());
 
-// **Uncomment this block for development only (remove in production)**
-if (!isProduction) {
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*'); // Allow all origins during development
-    res.header('Access-Control-Allow-Methods', 'DELETE, PUT, GET, POST, PATCH');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    next();
-  });
-}
-
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(
+  cors({
+    origin: '*',
+  }),
+);
+app.use(bodyParser.urlencoded({ limit: '500mb', extended: true }));
+app.use(bodyParser.json({ limit: '500mb', extended: true }));
 
 app.use('/api', webServer);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
+// Error Handler
+app.use((err, req, res, next) =>
   res.status(500).json({
     message: 'Internal server error',
     error: isProduction ? null : err,
-  });
-});
+  }),
+);
 
+// Start the server
 server.listen(port, () => {
   pino.logger.info(`Server running on port ${port}.`);
 });
+
+/*
+  In BullMQService, we have:
+  process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+*/

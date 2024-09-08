@@ -34,7 +34,11 @@ const signup = async body => {
     name: firstName,
     last_name: lastName,
     email,
+<<<<<<< Updated upstream
     role: 1,
+=======
+    role: 2,
+>>>>>>> Stashed changes
     password: hashedPassword,
   });
 
