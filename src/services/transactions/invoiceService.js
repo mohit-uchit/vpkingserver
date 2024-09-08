@@ -1,5 +1,5 @@
 const db = require('../../../models');
-const { Invoice } = db;
+const { Invoice, User } = db;
 const {
   invoiceStatus,
   superAdminInvoiceStatus,
@@ -18,30 +18,31 @@ const getInvoices = async (currentPage, pageSize, status, userId, type) => {
   const { page, limit, offset, pagination } = getPagination(
     currentPage,
     pageSize,
-    25,
-  ); // Default page size.
+    25, // Default page size.
+  );
 
-  let query = {
-    where: {
-      user_id: userId,
-    },
-    include: {
-      association: 'images',
-      attributes: ['storage_file_name'],
-    },
+  const query = {
+    where: {},
     order: [['id', 'DESC']],
   };
 
+  const userDetail = await User.findOne({
+    where: {
+      id: userId,
+    },
+    attributes: ['role'],
+  });
+
+  if (userDetail && userDetail.role === 2) {
+    query.where.user_id = userId;
+  }
+
   if (status) {
-    query.where = {
-      status: getIntKeyByValueOrNull(allInvoiceStatus, status),
-    };
+    query.where.status = getIntKeyByValueOrNull(allInvoiceStatus, status);
   }
 
   if (type) {
-    query.where = {
-      type: type,
-    };
+    query.where.type = type;
   }
 
   if (pagination) {
@@ -66,7 +67,6 @@ const _formatInvoices = data => {
     utr: d.utr,
     productDetails: d.product_details,
     generatedAt: moment(d.createdAt).format('DD-MM-YYYY HH:mm:ss'),
-    image: d.images,
   }));
 };
 
@@ -106,9 +106,9 @@ const updateStatusCustomer = async (id, userId, status, data) => {
     updateFields.utr = data.utr || null;
   }
 
-    if (data.type !== undefined) {
-      updateFields.type = getIntKeyByValueOrNull(productType, data.type);
-    }
+  if (data.type !== undefined) {
+    updateFields.type = getIntKeyByValueOrNull(productType, data.type);
+  }
 
   if (status !== undefined) {
     updateFields.status = getIntKeyByValueOrNull(invoiceStatus, status);

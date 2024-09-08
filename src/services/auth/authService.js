@@ -34,7 +34,7 @@ const signup = async body => {
     name: firstName,
     last_name: lastName,
     email,
-    role: getIntKeyByValueOrNull(roleConst, role),
+    role: 1,
     password: hashedPassword,
   });
 
