@@ -23,13 +23,6 @@ const getInvoices = async (currentPage, pageSize, status, userId, type) => {
 
   const query = {
     where: {},
-<<<<<<< Updated upstream
-=======
-    include: {
-      association: 'images',
-      attributes: ['storage_file_name'],
-    },
->>>>>>> Stashed changes
     order: [['id', 'DESC']],
   };
 
